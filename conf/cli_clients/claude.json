@@ -1,6 +1,6 @@
 {
   "name": "claude",
-  "command": "claude",
+  "command": "/Users/riomyers/.local/bin/claude",
   "additional_args": [
     "--permission-mode",
     "acceptEdits",

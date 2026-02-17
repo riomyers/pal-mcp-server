@@ -62,6 +62,7 @@ from tools import (  # noqa: E402
     PrecommitTool,
     RefactorTool,
     SecauditTool,
+    StatsTool,
     TestGenTool,
     ThinkDeepTool,
     TracerTool,
@@ -70,6 +71,7 @@ from tools import (  # noqa: E402
 from tools.models import ToolOutput  # noqa: E402
 from tools.shared.exceptions import ToolExecutionError  # noqa: E402
 from utils.env import env_override_enabled, get_env  # noqa: E402
+from utils.metrics import get_metrics  # noqa: E402
 
 # Configure logging for server operations
 # Can be controlled via LOG_LEVEL environment variable (DEBUG, INFO, WARNING, ERROR)
@@ -166,7 +168,7 @@ server: Server = Server("pal-server")
 
 
 # Constants for tool filtering
-ESSENTIAL_TOOLS = {"version", "listmodels"}
+ESSENTIAL_TOOLS = {"version", "listmodels", "stats"}
 
 
 def parse_disabled_tools_env() -> set[str]:
@@ -276,6 +278,7 @@ TOOLS = {
     "challenge": ChallengeTool(),  # Critical challenge prompt wrapper to avoid automatic agreement
     "apilookup": LookupTool(),  # Quick web/API lookup instructions
     "listmodels": ListModelsTool(),  # List all available AI models by provider
+    "stats": StatsTool(),  # Runtime metrics: call counts, latency, error rates
     "version": VersionTool(),  # Display server version and system information
 }
 TOOLS = filter_disabled_tools(TOOLS)
@@ -577,12 +580,11 @@ def configure_providers():
                     try:
                         if provider and hasattr(provider, "close"):
                             provider.close()
-                    except Exception:
+                    except Exception as exc:
                         # Logger might be closed during shutdown
-                        pass
-        except Exception:
-            # Silently ignore any errors during cleanup
-            pass
+                        print(f"Warning: provider cleanup failed: {exc}", file=sys.stderr)
+        except Exception as exc:
+            print(f"Warning: cleanup_providers error: {exc}", file=sys.stderr)
 
     atexit.register(cleanup_providers)
 
@@ -659,8 +661,8 @@ async def handle_list_tools() -> list[Tool]:
                 raw_name = client_info.get("name", "Unknown")
                 version = client_info.get("version", "Unknown")
                 mcp_activity_logger.info(f"MCP_CLIENT_INFO: {friendly_name} (raw={raw_name} v{version})")
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug(f"Failed to log client info to activity log: {exc}")
     except Exception as e:
         logger.debug(f"Could not log client info during list_tools: {e}")
     tools = []
@@ -753,8 +755,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     try:
         mcp_activity_logger = logging.getLogger("mcp_activity")
         mcp_activity_logger.info(f"TOOL_CALL: {name} with {len(arguments)} arguments")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(f"Failed to log tool call to activity log: {exc}")
 
     # Handle thread context reconstruction if continuation_id is present
     if "continuation_id" in arguments and arguments["continuation_id"]:
@@ -769,8 +771,8 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"CONVERSATION_RESUME: {name} resuming thread {continuation_id}")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(f"Failed to log conversation resume to activity log: {exc}")
 
         arguments = await reconstruct_thread_context(arguments)
         logger.debug(f"[CONVERSATION_DEBUG] After thread reconstruction, arguments keys: {list(arguments.keys())}")
@@ -781,6 +783,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
     if name in TOOLS:
         logger.info(f"Executing tool '{name}' with {len(arguments)} parameter(s)")
         tool = TOOLS[name]
+        _metrics_start = time.time()
 
         # EARLY MODEL RESOLUTION AT MCP BOUNDARY
         # Resolve model before passing to tool - this ensures consistent model handling
@@ -807,7 +810,15 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
         if not tool.requires_model():
             logger.debug(f"Tool {name} doesn't require model resolution - skipping model validation")
             # Execute tool directly without model context
-            return await tool.execute(arguments)
+            try:
+                _result = await tool.execute(arguments)
+                _duration = (time.time() - _metrics_start) * 1000
+                get_metrics().record_call(name, _duration)
+                return _result
+            except Exception:
+                _duration = (time.time() - _metrics_start) * 1000
+                get_metrics().record_call(name, _duration, error=True)
+                raise
 
         # Handle auto mode at MCP boundary - resolve to specific model
         if model_name.lower() == "auto":
@@ -862,15 +873,22 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[TextCon
                 raise ToolExecutionError(ToolOutput(**file_size_check).model_dump_json())
 
         # Execute tool with pre-resolved model context
-        result = await tool.execute(arguments)
+        try:
+            result = await tool.execute(arguments)
+            _duration = (time.time() - _metrics_start) * 1000
+            get_metrics().record_call(name, _duration)
+        except Exception:
+            _duration = (time.time() - _metrics_start) * 1000
+            get_metrics().record_call(name, _duration, error=True)
+            raise
         logger.info(f"Tool '{name}' execution completed")
 
         # Log completion to activity file
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"TOOL_COMPLETED: {name}")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(f"Failed to log tool completion to activity log: {exc}")
         return result
 
     # Handle unknown tool requests gracefully
@@ -963,6 +981,31 @@ tool calls to maintain full conversation context across multiple exchanges.
 
 Remember: Only suggest follow-ups when they would genuinely add value to the discussion, and always instruct "
 "The agent to use the continuation_id when you do."""
+
+
+def _resolve_fallback_model(tool, context_tool_name: str) -> str:
+    """Resolve a fallback model when the requested model is unavailable.
+
+    Tries the tool's preferred category first, then falls back to any available model.
+    Returns the fallback model name, or raises ValueError if none found.
+    """
+    from providers.registry import ModelProviderRegistry
+
+    fallback_model = None
+    if tool is not None:
+        try:
+            fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
+        except Exception as fallback_exc:
+            logger.debug(
+                f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context_tool_name}: {fallback_exc}"
+            )
+
+    if fallback_model is None:
+        available_models = ModelProviderRegistry.get_available_model_names()
+        if available_models:
+            fallback_model = available_models[0]
+
+    return fallback_model
 
 
 async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any]:
@@ -1059,8 +1102,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
         try:
             mcp_activity_logger = logging.getLogger("mcp_activity")
             mcp_activity_logger.info(f"CONVERSATION_ERROR: Thread {continuation_id} not found or expired")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug(f"Failed to log conversation error to activity log: {exc}")
 
         # Return error asking CLI to restart conversation with full context
         raise ValueError(
@@ -1117,22 +1160,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
                 model_context = ModelContext.from_arguments(arguments)
                 arguments.setdefault("_resolved_model_name", model_context.model_name)
             except ValueError as exc:
-                from providers.registry import ModelProviderRegistry
-
-                fallback_model = None
-                if tool is not None:
-                    try:
-                        fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                    except Exception as fallback_exc:  # pragma: no cover - defensive log
-                        logger.debug(
-                            f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
-                        )
-
-                if fallback_model is None:
-                    available_models = ModelProviderRegistry.get_available_model_names()
-                    if available_models:
-                        fallback_model = available_models[0]
-
+                fallback_model = _resolve_fallback_model(tool, context.tool_name)
                 if fallback_model is None:
                     raise
 
@@ -1147,20 +1175,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
 
         provider = ModelProviderRegistry.get_provider_for_model(model_context.model_name)
         if provider is None:
-            fallback_model = None
-            if tool is not None:
-                try:
-                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                except Exception as fallback_exc:  # pragma: no cover - defensive log
-                    logger.debug(
-                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
-                    )
-
-            if fallback_model is None:
-                available_models = ModelProviderRegistry.get_available_model_names()
-                if available_models:
-                    fallback_model = available_models[0]
-
+            fallback_model = _resolve_fallback_model(tool, context.tool_name)
             if fallback_model is None:
                 raise ValueError(
                     f"Conversation continuation failed: model '{model_context.model_name}' is not available with current API keys."
@@ -1174,22 +1189,7 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
             arguments["_resolved_model_name"] = fallback_model
     else:
         if model_context is None:
-            from providers.registry import ModelProviderRegistry
-
-            fallback_model = None
-            if tool is not None:
-                try:
-                    fallback_model = ModelProviderRegistry.get_preferred_fallback_model(tool.get_model_category())
-                except Exception as fallback_exc:  # pragma: no cover - defensive log
-                    logger.debug(
-                        f"[CONVERSATION_DEBUG] Unable to resolve fallback model for {context.tool_name}: {fallback_exc}"
-                    )
-
-            if fallback_model is None:
-                available_models = ModelProviderRegistry.get_available_model_names()
-                if available_models:
-                    fallback_model = available_models[0]
-
+            fallback_model = _resolve_fallback_model(tool, context.tool_name)
             if fallback_model is None:
                 raise ValueError(
                     "Conversation continuation failed: no available models detected for context reconstruction."
@@ -1282,8 +1282,8 @@ async def reconstruct_thread_context(arguments: dict[str, Any]) -> dict[str, Any
             f"CONVERSATION_CONTINUATION: Thread {continuation_id} turn {len(context.turns)} - "
             f"{len(context.turns)} previous turns loaded"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(f"Failed to log conversation continuation to activity log: {exc}")
 
     return enhanced_arguments
 

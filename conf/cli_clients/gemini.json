@@ -1,6 +1,6 @@
 {
   "name": "gemini",
-  "command": "gemini",
+  "command": "/opt/homebrew/bin/gemini",
   "additional_args": [
     "--yolo"
   ],

@@ -15,6 +15,7 @@ Key features:
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING, Any
@@ -614,8 +615,9 @@ of the evidence, even when it strongly points in one direction.""",
             for warning in temp_warnings:
                 logger.warning(warning)
 
-            # Call the model with validated temperature
-            response = provider.generate_content(
+            # Call the model with validated temperature (run in thread to avoid blocking event loop)
+            response = await asyncio.to_thread(
+                provider.generate_content,
                 prompt=prompt,
                 model_name=model_name,
                 system_prompt=system_prompt,

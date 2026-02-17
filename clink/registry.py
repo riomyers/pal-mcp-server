@@ -39,10 +39,12 @@ class ClinkRegistry:
 
     def __init__(self) -> None:
         self._clients: dict[str, ResolvedCLIClient] = {}
+        self._config_mtimes: dict[str, float] = {}
         self._load()
 
     def _load(self) -> None:
         self._clients.clear()
+        self._config_mtimes.clear()
         for config_path in self._iter_config_files():
             try:
                 data = read_json_file(str(config_path))
@@ -52,6 +54,12 @@ class ClinkRegistry:
             if not data:
                 logger.debug("Skipping empty configuration file: %s", config_path)
                 continue
+
+            # Track file modification times for hot-reload detection
+            try:
+                self._config_mtimes[str(config_path)] = config_path.stat().st_mtime
+            except OSError:
+                pass
 
             config = CLIClientConfig.model_validate(data)
             resolved = self._resolve_config(config, source_path=config_path)
@@ -68,6 +76,26 @@ class ClinkRegistry:
                 f"{CONFIG_ENV_VAR}."
             )
 
+    def _configs_changed(self) -> bool:
+        """Check if any config file has been modified since last load."""
+        for config_path in self._iter_config_files():
+            path_str = str(config_path)
+            try:
+                current_mtime = config_path.stat().st_mtime
+            except OSError:
+                continue
+            if path_str not in self._config_mtimes or self._config_mtimes[path_str] != current_mtime:
+                return True
+        return False
+
+    def reload_if_changed(self) -> bool:
+        """Reload configs only if files have changed on disk. Returns True if reloaded."""
+        if self._configs_changed():
+            logger.info("CLI client configs changed on disk, reloading...")
+            self._load()
+            return True
+        return False
+
     def reload(self) -> None:
         """Reload configurations from disk."""
         self._load()
@@ -80,6 +108,8 @@ class ClinkRegistry:
         return sorted(config.roles.keys())
 
     def get_client(self, cli_name: str) -> ResolvedCLIClient:
+        # Auto-reload if config files changed on disk (hot-reload)
+        self.reload_if_changed()
         key = cli_name.lower()
         if key not in self._clients:
             available = ", ".join(self.list_clients())
