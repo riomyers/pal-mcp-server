@@ -17,7 +17,6 @@ Key Features:
 """
 
 import logging
-import sqlite3
 import threading
 import time
 from pathlib import Path
@@ -106,6 +105,9 @@ class SQLiteStorage:
     """
 
     def __init__(self, db_path: str | None = None):
+        import sqlite3  # Lazy import — only needed for SQLite backend
+        self._sqlite3 = sqlite3
+
         if db_path is None:
             pal_dir = Path.home() / ".pal"
             pal_dir.mkdir(exist_ok=True)
@@ -134,10 +136,10 @@ class SQLiteStorage:
 
         logger.info(f"SQLite storage initialized at {db_path}, cleanup every {self._cleanup_interval // 60}m")
 
-    def _get_conn(self) -> sqlite3.Connection:
+    def _get_conn(self):
         """Get a thread-local SQLite connection."""
         if not hasattr(self._local, "conn") or self._local.conn is None:
-            self._local.conn = sqlite3.connect(self._db_path, timeout=10)
+            self._local.conn = self._sqlite3.connect(self._db_path, timeout=10)
             self._local.conn.execute("PRAGMA journal_mode=WAL")
             self._local.conn.execute("PRAGMA busy_timeout=5000")
         return self._local.conn

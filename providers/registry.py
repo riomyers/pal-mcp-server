@@ -364,10 +364,9 @@ class ModelProviderRegistry:
 
         allowed_models = []
 
-        # Get the provider's supported models
+        # Get the provider's supported models (canonical names only, no aliases)
         try:
-            # Use list_models to get all supported models (handles both regular and custom providers)
-            supported_models = provider.list_models(respect_restrictions=False)
+            supported_models = provider.list_models(respect_restrictions=False, include_aliases=False)
         except (NotImplementedError, AttributeError):
             # Fallback to provider-declared capability maps if list_models not implemented
             model_map = getattr(provider, "MODEL_CAPABILITIES", None)

@@ -6,12 +6,12 @@ normal-sized prompts using real integration testing instead of mocks.
 
 INTEGRATION TESTS:
 These tests are marked with @pytest.mark.integration and make real API calls.
-They use the local-llama model which is FREE and runs locally via Ollama.
+They use the local (gemma3:12b) model which is FREE and runs locally via Ollama.
 
 Prerequisites:
 - Ollama installed and running locally
 - CUSTOM_API_URL environment variable set to your Ollama endpoint (e.g., http://localhost:11434)
-- local-llama model available through custom provider configuration
+- local (gemma3:12b) model available through custom provider configuration
 - No API keys required - completely FREE to run unlimited times!
 
 Running Tests:
@@ -39,7 +39,7 @@ from tools.thinkdeep import ThinkDeepTool
 
 load_dotenv()
 
-# Check if CUSTOM_API_URL is available for local-llama
+# Check if CUSTOM_API_URL is available for local (gemma3:12b)
 CUSTOM_API_AVAILABLE = os.getenv("CUSTOM_API_URL") is not None
 
 
@@ -47,7 +47,7 @@ def skip_if_no_custom_api():
     """Helper to skip integration tests if CUSTOM_API_URL is not available."""
     if not CUSTOM_API_AVAILABLE:
         pytest.skip(
-            "CUSTOM_API_URL not set. To run integration tests with local-llama, ensure CUSTOM_API_URL is set in .env file (e.g., http://localhost:11434/v1)"
+            "CUSTOM_API_URL not set. To run integration tests with local (gemma3:12b), ensure CUSTOM_API_URL is set in .env file (e.g., http://localhost:11434/v1)"
         )
 
 
@@ -65,7 +65,7 @@ class TestPromptIntegration:
         result = await tool.execute(
             {
                 "prompt": "Explain Python decorators in one sentence",
-                "model": "local-llama",  # Use available model for integration tests
+                "model": "local",  # Use available model for integration tests
                 "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
@@ -86,16 +86,14 @@ class TestPromptIntegration:
 
         # Create a temporary Python file for testing
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """
+            f.write("""
 def hello_world():
     \"\"\"A simple hello world function.\"\"\"
     return "Hello, World!"
 
 if __name__ == "__main__":
     print(hello_world())
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -103,7 +101,7 @@ if __name__ == "__main__":
                 {
                     "prompt": "What does this Python code do?",
                     "absolute_file_paths": [temp_file],
-                    "model": "local-llama",
+                    "model": "local",
                     "working_directory_absolute_path": tempfile.gettempdir(),
                 }
             )
@@ -135,7 +133,7 @@ if __name__ == "__main__":
                 "findings": "Building a high-traffic API - considering scalability and reliability",
                 "problem_context": "Building a high-traffic API",
                 "focus_areas": ["scalability", "reliability"],
-                "model": "local-llama",
+                "model": "local",
             }
         )
 
@@ -155,8 +153,7 @@ if __name__ == "__main__":
 
         # Create a temporary Python file for testing
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """
+            f.write("""
 def process_user_input(user_input):
     # Potentially unsafe code for demonstration
     query = f"SELECT * FROM users WHERE name = '{user_input}'"
@@ -166,8 +163,7 @@ def main():
     user_name = input("Enter name: ")
     result = process_user_input(user_name)
     print(result)
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -181,7 +177,7 @@ def main():
                     "relevant_files": [temp_file],
                     "review_type": "security",
                     "focus_on": "Look for SQL injection vulnerabilities",
-                    "model": "local-llama",
+                    "model": "local",
                 }
             )
 
@@ -241,8 +237,7 @@ def main():
 
         # Create a temporary Python file demonstrating MVC pattern
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write(
-                """
+            f.write("""
 # Model
 class User:
     def __init__(self, name, email):
@@ -262,8 +257,7 @@ class UserController:
 
     def get_user_display(self):
         return self.view.display_user(self.model)
-"""
-            )
+""")
             temp_file = f.name
 
         try:
@@ -276,7 +270,7 @@ class UserController:
                     "findings": "Initial architectural analysis",
                     "relevant_files": [temp_file],
                     "analysis_type": "architecture",
-                    "model": "local-llama",
+                    "model": "local",
                 }
             )
 
@@ -301,7 +295,7 @@ class UserController:
         result = await tool.execute(
             {
                 "prompt": "Hello",
-                "model": "local-llama",
+                "model": "local",
                 "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
@@ -324,7 +318,7 @@ class UserController:
                 "prompt": "Explain quantum computing briefly",
                 "thinking_mode": "low",
                 "temperature": 0.8,
-                "model": "local-llama",
+                "model": "local",
                 "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
@@ -350,7 +344,7 @@ class UserController:
         result = await tool.execute(
             {
                 "prompt": special_prompt,
-                "model": "local-llama",
+                "model": "local",
                 "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )
@@ -391,7 +385,7 @@ class UserController:
                     "next_step_required": False,
                     "findings": "Initial file analysis",
                     "relevant_files": temp_files,
-                    "model": "local-llama",
+                    "model": "local",
                 }
             )
 
@@ -422,7 +416,7 @@ class UserController:
         result = await tool.execute(
             {
                 "prompt": unicode_prompt,
-                "model": "local-llama",
+                "model": "local",
                 "working_directory_absolute_path": tempfile.gettempdir(),
             }
         )

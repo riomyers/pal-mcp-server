@@ -221,8 +221,8 @@ class TestModelEnumeration:
         tool = AnalyzeTool()
         models = tool._get_available_models()
 
-        assert "deepseek/deepseek-r1:free" in models, "Canonical free model name should be available"
-        assert "deepseek-free" in models, "Free model alias should be included for MCP validation"
+        assert "deepseek/deepseek-r1-0528" in models, "Canonical deepseek model name should be available"
+        assert "deepseek" in models, "Deepseek alias should be included for MCP validation"
 
 
 # DELETED: test_auto_mode_behavior_with_environment_variables

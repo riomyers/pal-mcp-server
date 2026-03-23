@@ -209,7 +209,7 @@ class TestBuggyBehaviorPrevention:
         """Alias-aware listings should expose targets across providers."""
         providers_to_test = [
             (OpenAIModelProvider(api_key="test-key"), "mini", "o4-mini"),
-            (GeminiModelProvider(api_key="test-key"), "flash", "gemini-2.5-flash"),
+            (GeminiModelProvider(api_key="test-key"), "flash", "gemini-3-flash-preview"),
         ]
 
         for provider, alias, target in providers_to_test:
