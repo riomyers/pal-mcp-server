@@ -321,6 +321,11 @@ class OpenAICompatibleProvider(ModelProvider):
                         minimal_kwargs = {"api_key": self.api_key}
                         if self.base_url:
                             minimal_kwargs["base_url"] = self.base_url
+                        if self.DEFAULT_HEADERS:
+                            # Preserve subclass header overrides (e.g. Nexus User-Agent
+                            # override that bypasses Cloudflare WAF) — without this,
+                            # the SDK falls back to "OpenAI/Python ..." which CF blocks.
+                            minimal_kwargs["default_headers"] = self.DEFAULT_HEADERS.copy()
                         self._client = OpenAI(**minimal_kwargs)
                     except Exception as fallback_error:
                         logging.error("Even minimal OpenAI client creation failed: %s", fallback_error)

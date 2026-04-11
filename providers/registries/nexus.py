@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from ..shared import ModelCapabilities, ProviderType
-from .base import CAPABILITY_FIELD_NAMES, CapabilityModelRegistry
+from ..shared import ProviderType
+from .base import CapabilityModelRegistry
 
 
 class NexusModelRegistry(CapabilityModelRegistry):
@@ -17,9 +17,3 @@ class NexusModelRegistry(CapabilityModelRegistry):
             friendly_prefix="Nexus ({model})",
             config_path=config_path,
         )
-
-    def _finalise_entry(self, entry: dict) -> tuple[ModelCapabilities, dict]:
-        filtered = {k: v for k, v in entry.items() if k in CAPABILITY_FIELD_NAMES}
-        filtered.setdefault("provider", ProviderType.NEXUS)
-        capability = ModelCapabilities(**filtered)
-        return capability, {}

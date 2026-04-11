@@ -74,12 +74,10 @@ class NexusProvider(OpenAICompatibleProvider):
         if builtin is not None:
             return builtin
 
-        registry_entry = self._registry.resolve(canonical_name)
-        if registry_entry:
-            registry_entry.provider = ProviderType.NEXUS
-            return registry_entry
+        if self._registry is None:
+            return None
 
-        return None
+        return self._registry.resolve(canonical_name)
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve PAL model names/aliases to Nexus short names."""
@@ -87,6 +85,10 @@ class NexusProvider(OpenAICompatibleProvider):
         cache_key = model_name.lower()
         if cache_key in self._alias_cache:
             return self._alias_cache[cache_key]
+
+        if self._registry is None:
+            self._alias_cache[cache_key] = model_name
+            return model_name
 
         config = self._registry.resolve(model_name)
         if config:
