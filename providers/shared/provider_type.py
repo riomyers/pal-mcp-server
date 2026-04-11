@@ -8,6 +8,7 @@ __all__ = ["ProviderType"]
 class ProviderType(Enum):
     """Canonical identifiers for every supported provider backend."""
 
+    NEXUS = "nexus"
     GOOGLE = "google"
     OPENAI = "openai"
     AZURE = "azure"

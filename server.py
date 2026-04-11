@@ -399,6 +399,7 @@ def configure_providers():
     from providers.custom import CustomProvider
     from providers.dial import DIALModelProvider
     from providers.gemini import GeminiModelProvider
+    from providers.nexus import NexusProvider
     from providers.openai import OpenAIModelProvider
     from providers.openrouter import OpenRouterProvider
     from providers.shared import ProviderType
@@ -406,6 +407,15 @@ def configure_providers():
     from utils.model_restrictions import get_restriction_service
 
     valid_providers = []
+    has_nexus = False
+
+    # Check for Nexus AI Gateway key (highest priority — multi-provider gateway with built-in fallback)
+    nexus_key = get_env("NEXUS_API_KEY")
+    if nexus_key and nexus_key != "your_nexus_api_key_here":
+        nexus_url = get_env("NEXUS_BASE_URL", "") or "https://nexus.subatomic.pro/v1"
+        valid_providers.append(f"Nexus AI Gateway ({nexus_url})")
+        has_nexus = True
+        logger.info(f"Nexus API key found - routing through {nexus_url}")
     has_native_apis = False
     has_openrouter = False
     has_custom = False
@@ -496,8 +506,14 @@ def configure_providers():
             logger.debug("No custom API key provided (using unauthenticated access)")
 
     # Register providers in priority order:
-    # 1. Native APIs first (most direct and efficient)
+    # 0. Nexus AI Gateway first (multi-provider with built-in fallback chain)
+    # 1. Native APIs second (most direct and efficient)
     registered_providers = []
+
+    if has_nexus:
+        ModelProviderRegistry.register_provider(ProviderType.NEXUS, NexusProvider)
+        registered_providers.append(ProviderType.NEXUS.value)
+        logger.debug(f"Registered provider: {ProviderType.NEXUS.value}")
 
     if has_native_apis:
         if gemini_key and gemini_key != "your_gemini_api_key_here":
@@ -547,6 +563,7 @@ def configure_providers():
     if not valid_providers:
         raise ValueError(
             "At least one API configuration is required. Please set either:\n"
+            "- NEXUS_API_KEY for the Nexus AI Gateway (recommended — multi-provider with fallback)\n"
             "- GEMINI_API_KEY for Gemini models\n"
             "- OPENAI_API_KEY for OpenAI models\n"
             "- XAI_API_KEY for X.AI GROK models\n"

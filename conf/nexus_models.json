@@ -1,0 +1,122 @@
+{
+  "_README": {
+    "description": "Model metadata for the Nexus AI Gateway provider. Nexus exposes an OpenAI-compatible /v1/chat/completions endpoint and routes requests across Claude, Gemini, Gemma, and DeepSeek with automatic fallback chains and circuit breakers.",
+    "documentation": "https://nexus.subatomic.pro/dashboard",
+    "usage": "Each model maps to a Nexus short name. Calling these models routes through Nexus instead of the native provider, gaining access to its multi-provider fallback chain.",
+    "field_notes": "Matches providers/shared/model_capabilities.py."
+  },
+  "models": [
+    {
+      "model_name": "opus",
+      "aliases": [
+        "claude-opus",
+        "claude-opus-4",
+        "claude-opus-4-6",
+        "opus-4",
+        "opus-4-6"
+      ],
+      "context_window": 200000,
+      "max_output_tokens": 32000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "intelligence_score": 19,
+      "description": "Claude Opus 4.6 via Nexus AI Gateway. Auto-falls back to Sonnet → Haiku → Gemini → DeepSeek on failure."
+    },
+    {
+      "model_name": "sonnet",
+      "aliases": [
+        "claude-sonnet",
+        "claude-sonnet-4",
+        "claude-sonnet-4-6",
+        "sonnet-4",
+        "sonnet-4-6"
+      ],
+      "context_window": 200000,
+      "max_output_tokens": 32000,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "intelligence_score": 17,
+      "description": "Claude Sonnet 4.6 via Nexus AI Gateway. Default model. Auto-falls back across providers."
+    },
+    {
+      "model_name": "haiku",
+      "aliases": [
+        "claude-haiku",
+        "claude-haiku-4",
+        "claude-haiku-4-5",
+        "haiku-4",
+        "haiku-4-5"
+      ],
+      "context_window": 200000,
+      "max_output_tokens": 16000,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "intelligence_score": 14,
+      "description": "Claude Haiku 4.5 via Nexus AI Gateway. Fast tier. Auto-falls back across providers."
+    },
+    {
+      "model_name": "gemini",
+      "aliases": [
+        "gemini-2.5-pro",
+        "gemini-2.5-flash",
+        "gemini-pro",
+        "gemini-flash",
+        "google"
+      ],
+      "context_window": 1048576,
+      "max_output_tokens": 65536,
+      "supports_extended_thinking": true,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": true,
+      "supports_temperature": true,
+      "intelligence_score": 17,
+      "description": "Google Gemini 2.5 Pro via Nexus. 1M context. Auto-falls back to DeepSeek → Claude on failure."
+    },
+    {
+      "model_name": "deepseek",
+      "aliases": [
+        "deepseek-chat",
+        "deepseek-r1",
+        "deepseek-coder"
+      ],
+      "context_window": 128000,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": true,
+      "supports_images": false,
+      "supports_temperature": true,
+      "intelligence_score": 15,
+      "description": "DeepSeek Chat via Nexus. Code-focused. Auto-falls back to Gemini → Claude on failure."
+    },
+    {
+      "model_name": "gemma",
+      "aliases": [
+        "gemma-3",
+        "gemma-3-12b",
+        "gemma-4",
+        "gemma-4-31b",
+        "gemma-4-26b"
+      ],
+      "context_window": 128000,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": true,
+      "supports_temperature": true,
+      "intelligence_score": 12,
+      "description": "Google Gemma 4 (open-weight, Apache 2.0) via Nexus. Auto-falls back across providers."
+    }
+  ]
+}

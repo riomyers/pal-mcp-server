@@ -34,8 +34,10 @@ class ModelProviderRegistry:
     _instance = None
 
     # Provider priority order for model selection
-    # Native APIs first, then custom endpoints, then catch-all providers
+    # Nexus first (multi-provider gateway with built-in fallback), then native
+    # APIs, then custom endpoints, then catch-all providers
     PROVIDER_PRIORITY_ORDER = [
+        ProviderType.NEXUS,  # Multi-provider gateway (Claude/Gemini/DeepSeek with fallback)
         ProviderType.GOOGLE,  # Direct Gemini access
         ProviderType.OPENAI,  # Direct OpenAI access
         ProviderType.AZURE,  # Azure-hosted OpenAI deployments
@@ -95,6 +97,16 @@ class ModelProviderRegistry:
 
         # Get provider class or factory function
         provider_class = instance._providers[provider_type]
+
+        # Nexus AI Gateway: explicit base URL fallback + required API key
+        if provider_type == ProviderType.NEXUS:
+            if not api_key:
+                logging.debug("NEXUS_API_KEY missing – skipping Nexus provider")
+                return None
+            nexus_base_url = get_env("NEXUS_BASE_URL", "") or "https://nexus.subatomic.pro/v1"
+            provider = provider_class(api_key=api_key, base_url=nexus_base_url)
+            instance._initialized_providers[provider_type] = provider
+            return provider
 
         # For custom providers, handle special initialization requirements
         if provider_type == ProviderType.CUSTOM:
@@ -332,6 +344,7 @@ class ModelProviderRegistry:
             API key string or None if not found
         """
         key_mapping = {
+            ProviderType.NEXUS: "NEXUS_API_KEY",
             ProviderType.GOOGLE: "GEMINI_API_KEY",
             ProviderType.OPENAI: "OPENAI_API_KEY",
             ProviderType.AZURE: "AZURE_OPENAI_API_KEY",
