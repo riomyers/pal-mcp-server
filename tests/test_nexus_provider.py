@@ -245,9 +245,9 @@ class TestNexusDefaultHeaders:
 
         assert mock_openai_class.call_count == 2
         fallback_kwargs = mock_openai_class.call_args_list[1][1]
-        assert "default_headers" in fallback_kwargs, (
-            "Minimal-kwargs fallback dropped default_headers — CF WAF will block."
-        )
+        assert (
+            "default_headers" in fallback_kwargs
+        ), "Minimal-kwargs fallback dropped default_headers — CF WAF will block."
         assert fallback_kwargs["default_headers"]["User-Agent"] == "pal-mcp-server/nexus"
 
 
@@ -279,9 +279,7 @@ class TestNexusGenerateContent:
         mock_client.chat.completions.create.return_value = mock_response
 
         provider = NexusProvider("test-key")
-        result = provider.generate_content(
-            prompt="ping", model_name="claude-sonnet-4-6", temperature=0.0
-        )
+        result = provider.generate_content(prompt="ping", model_name="claude-sonnet-4-6", temperature=0.0)
 
         mock_client.chat.completions.create.assert_called_once()
         call_kwargs = mock_client.chat.completions.create.call_args[1]

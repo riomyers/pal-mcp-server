@@ -106,6 +106,7 @@ class SQLiteStorage:
 
     def __init__(self, db_path: str | None = None):
         import sqlite3  # Lazy import — only needed for SQLite backend
+
         self._sqlite3 = sqlite3
 
         if db_path is None:
