@@ -23,7 +23,7 @@
       "supports_images": true,
       "supports_temperature": true,
       "intelligence_score": 19,
-      "description": "Claude Opus 4.6 via Nexus AI Gateway. Auto-falls back to Sonnet → Haiku → Gemini → DeepSeek on failure."
+      "description": "Claude Opus 4.6 via Nexus AI Gateway. Auto-falls back to Sonnet \u2192 Haiku \u2192 Gemini \u2192 DeepSeek on failure."
     },
     {
       "model_name": "sonnet",
@@ -78,7 +78,7 @@
       "supports_images": true,
       "supports_temperature": true,
       "intelligence_score": 17,
-      "description": "Google Gemini 2.5 Pro via Nexus. 1M context. Auto-falls back to DeepSeek → Claude on failure."
+      "description": "Google Gemini 2.5 Pro via Nexus. 1M context. Auto-falls back to DeepSeek \u2192 Claude on failure."
     },
     {
       "model_name": "deepseek",
@@ -95,7 +95,7 @@
       "supports_images": false,
       "supports_temperature": true,
       "intelligence_score": 15,
-      "description": "DeepSeek Chat via Nexus. Code-focused. Auto-falls back to Gemini → Claude on failure."
+      "description": "DeepSeek Chat via Nexus. Code-focused. Auto-falls back to Gemini \u2192 Claude on failure."
     },
     {
       "model_name": "gemma",
@@ -115,6 +115,70 @@
       "supports_temperature": true,
       "intelligence_score": 12,
       "description": "Google Gemma 4 (open-weight, Apache 2.0) via Nexus. Auto-falls back across providers."
+    },
+    {
+      "model_name": "hermes",
+      "aliases": [
+        "hermes-4-70b",
+        "nous-hermes",
+        "hermes-4"
+      ],
+      "context_window": 131072,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "supports_temperature": true,
+      "intelligence_score": 14,
+      "description": "Nous Hermes 4 70B via Nexus -> OpenRouter. Minimally-aligned hybrid reasoning model; answers where safety-tuned models refuse. Text only. $0.13/$0.40 per M."
+    },
+    {
+      "model_name": "hermes-4-405b",
+      "aliases": [
+        "hermes-405b",
+        "nous-hermes-405b"
+      ],
+      "context_window": 131072,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "supports_temperature": true,
+      "intelligence_score": 16,
+      "description": "Nous Hermes 4 405B via Nexus -> OpenRouter. Frontier-scale minimally-aligned reasoning. Text only. $1.00/$3.00 per M."
+    },
+    {
+      "model_name": "dolphin",
+      "aliases": [
+        "dolphin-mistral",
+        "dolphin-venice"
+      ],
+      "context_window": 128000,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "supports_temperature": true,
+      "intelligence_score": 12,
+      "description": "Dolphin Mistral 24B Venice Edition via Nexus -> OpenRouter. Explicitly uncensored instruct model. Text only. $0.20/$0.90 per M."
+    },
+    {
+      "model_name": "cydonia",
+      "aliases": [
+        "cydonia-24b"
+      ],
+      "context_window": 131072,
+      "max_output_tokens": 8192,
+      "supports_extended_thinking": false,
+      "supports_json_mode": true,
+      "supports_function_calling": false,
+      "supports_images": false,
+      "supports_temperature": true,
+      "intelligence_score": 12,
+      "description": "Cydonia 24B v4.1 via Nexus -> OpenRouter. Uncensored, creative-writing oriented. Text only. $0.30/$0.50 per M."
     }
   ]
 }
