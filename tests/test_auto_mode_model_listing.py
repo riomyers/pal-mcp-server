@@ -110,7 +110,19 @@ def test_error_listing_respects_env_restrictions(monkeypatch, reset_registry):
     ):
         monkeypatch.setenv(key, value)
 
-    for var in ("XAI_API_KEY", "CUSTOM_API_URL", "CUSTOM_API_KEY", "DIAL_API_KEY"):
+    # NEXUS_* must be cleared too: the Nexus provider registers whenever
+    # NEXUS_API_KEY is present (including from .env, which configure_providers
+    # reloads), and it has no allow-list, so it would inject its whole catalogue
+    # into the "available models" list this test asserts on. Added when Nexus
+    # became a provider; the isolation list was not updated at the time.
+    for var in (
+        "XAI_API_KEY",
+        "CUSTOM_API_URL",
+        "CUSTOM_API_KEY",
+        "DIAL_API_KEY",
+        "NEXUS_API_KEY",
+        "NEXUS_BASE_URL",
+    ):
         monkeypatch.delenv(var, raising=False)
     for azure_var in (
         "AZURE_OPENAI_API_KEY",
