@@ -192,3 +192,7 @@ test_simulation_files/
 
 # Sigil cache
 .sigil-cache.json
+.pal_venv_old/
+.env.bak*
+.sigil-mcp-cache.json
+.pickle/
